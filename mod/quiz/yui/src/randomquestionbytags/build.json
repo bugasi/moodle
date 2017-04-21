@@ -1,0 +1,10 @@
+{
+    "name": "moodle-mod_quiz-randomquestionbytags",
+    "builds": {
+        "moodle-mod_quiz-randomquestionbytags": {
+            "jsfiles": [
+                "randomquestionbytags.js"
+            ]
+        }
+    }
+}

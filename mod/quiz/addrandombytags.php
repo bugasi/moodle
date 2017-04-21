@@ -15,29 +15,31 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Fallback page of /mod/quiz/edit.php add random question dialog,
- * for users who do not use javascript.
+ * Post target for randomtag question creation,
+ * randomtag questions require javascript to show the proper tags when
+ * changing the category, so an error message is displayed if javascript
+ * is not enabled.
  *
  * @package   mod_quiz
- * @copyright 2008 Olli Savolainen
+ * @copyright   2017 Andreas Figge (BuGaSi GmbH)
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-
 require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
-require_once($CFG->dirroot . '/mod/quiz/addrandomform.php');
+require_once($CFG->dirroot . '/mod/quiz/addrandombytagsform.php');
 require_once($CFG->dirroot . '/question/editlib.php');
 require_once($CFG->dirroot . '/question/category_class.php');
 
-list($thispageurl, $contexts, $cmid, $cm, $quiz, $pagevars) = question_edit_setup('editq', '/mod/quiz/addrandom.php', true);
+list($thispageurl, $contexts, $cmid, $cm, $quiz, $pagevars) = question_edit_setup('editq', '/mod/quiz/addrandombytags.php', true);
 
-// These params are only passed from page request to request while we stay on
-// this page otherwise they would go in question_edit_setup.
 $returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
 $addonpage = optional_param('addonpage', 0, PARAM_INT);
 $category = optional_param('category', 0, PARAM_INT);
 $scrollpos = optional_param('scrollpos', 0, PARAM_INT);
+$tags = optional_param_array('tags', [], PARAM_INT);
+$nottags = optional_param_array('nottags', [], PARAM_INT);
+
 
 // Get the course object and related bits.
 if (!$course = $DB->get_record('course', array('id' => $quiz->course))) {
@@ -73,55 +75,24 @@ $qcobject = new question_category_object(
     null,
     $contexts->having_cap('moodle/question:add'));
 
-$mform = new quiz_add_random_form(new moodle_url('/mod/quiz/addrandom.php'),
-                array('contexts' => $contexts, 'cat' => $pagevars['cat']));
+$mform = new quiz_add_random_by_tags_form(new moodle_url('/mod/quiz/addrandombytags.php'),
+    array('contexts' => $contexts, 'cat' => $pagevars['cat']));
 
 if ($mform->is_cancelled()) {
     redirect($returnurl);
 }
 
 if ($data = $mform->get_data()) {
-    if (!empty($data->existingcategory)) {
-        list($categoryid) = explode(',', $data->category);
-        $includesubcategories = !empty($data->includesubcategories);
-        $returnurl->param('cat', $data->category);
+    list($categoryid) = explode(',', $data->category);
+    $includesubcategories = !empty($data->includesubcategories);
 
-    } else if (!empty($data->newcategory)) {
-        list($parentid, $contextid) = explode(',', $data->parent);
-        $categoryid = $qcobject->add_category($data->parent, $data->name, '', true);
-        $includesubcategories = 0;
+    $tags = object_property_exists($data, 'tags') ? $data->tags : [];
+    $nottags = object_property_exists($data, 'nottags') ? $data->nottags : [];
 
-        $returnurl->param('cat', $categoryid . ',' . $contextid);
-    } else {
-        throw new coding_exception(
-                'It seems a form was submitted without any button being pressed???');
-    }
-
-    quiz_add_random_questions($quiz, $addonpage, $categoryid, $data->numbertoadd, $includesubcategories);
+    quiz_add_random_questions_by_tags($quiz, $addonpage, $categoryid, $data->numbertoadd, $includesubcategories, $tags, $nottags);
     quiz_delete_previews($quiz);
     quiz_update_sumgrades($quiz);
     redirect($returnurl);
 }
 
-$mform->set_data(array(
-    'addonpage' => $addonpage,
-    'returnurl' => $returnurl,
-    'cmid' => $cm->id,
-    'category' => $category,
-));
-
-// Setup $PAGE.
-$streditingquiz = get_string('editinga', 'moodle', get_string('modulename', 'quiz'));
-$PAGE->navbar->add($streditingquiz);
-$PAGE->set_title($streditingquiz);
-$PAGE->set_heading($course->fullname);
-echo $OUTPUT->header();
-
-if (!$quizname = $DB->get_field($cm->modname, 'name', array('id' => $cm->instance))) {
-            print_error('invalidcoursemodule');
-}
-
-echo $OUTPUT->heading(get_string('addrandomquestiontoquiz', 'quiz', $quizname), 2);
-$mform->display();
-echo $OUTPUT->footer();
-
+redirect($returnurl, get_string('randombytagsnoscriptwarning', 'quiz'), 5, \core\output\notification::NOTIFY_ERROR);

@@ -451,7 +451,7 @@ class quiz {
         // We must be careful with random questions, if we find a random question we must assume that the quiz may content
         // any of the questions in the referenced category (or subcategories).
         foreach ($this->get_questions() as $questiondata) {
-            if ($questiondata->qtype == 'random' and $includepotential) {
+            if (($questiondata->qtype == 'random' || $questiondata->qtype == 'randomtag') and $includepotential) {
                 $includesubcategories = (bool) $questiondata->questiontext;
                 if (!isset($qcategories[$questiondata->category])) {
                     $qcategories[$questiondata->category] = false;
@@ -567,9 +567,9 @@ class quiz_attempt {
         $this->slots = $DB->get_records('quiz_slots',
                 array('quizid' => $this->get_quizid()), 'slot',
                 'slot, requireprevious, questionid');
+
         $this->sections = array_values($DB->get_records('quiz_sections',
                 array('quizid' => $this->get_quizid()), 'firstslot'));
-
         $this->link_sections_and_slots();
         $this->determine_layout();
         $this->number_questions();
@@ -1856,16 +1856,37 @@ class quiz_attempt {
         // Choose the replacement question.
         $questiondata = $DB->get_record('question',
                 array('id' => $this->slots[$slot]->questionid));
-        if ($questiondata->qtype != 'random') {
-            $newqusetionid = $questiondata->id;
-        } else {
+        if ($questiondata->qtype == 'random') {
             $randomloader = new \core_question\bank\random_question_loader($qubaids, array());
             $newqusetionid = $randomloader->get_next_question_id($questiondata->category,
-                    (bool) $questiondata->questiontext);
+                (bool) $questiondata->questiontext);
             if ($newqusetionid === null) {
                 throw new moodle_exception('notenoughrandomquestions', 'quiz',
-                        $quizobj->view_url(), $questiondata);
+                    $quizobj->view_url(), $questiondata);
             }
+        } else if ($questiondata->qtype == 'randomtag') {
+            $randomloader = new \core_question\bank\random_question_loader($qubaids, array());
+            $availableids = question_bank::get_qtype('randomtag')->get_available_questions_from_category($questiondata->category,
+                (bool)$questiondata->questiontext, $questiondata->id);
+            if ($availableids === null) {
+                throw new moodle_exception('notenoughrandomquestions', 'quiz',
+                    $quizobj->view_url(), $questiondata);
+            }
+            shuffle($availableids);
+
+            $newqusetionid = null;
+            foreach ($availableids as $avid) {
+                if ($randomloader->is_question_available($questiondata->category, (bool)$questiondata->questiontext, $avid)) {
+                    $newqusetionid = $avid;
+                    break;
+                }
+            }
+            if ($newqusetionid === null) {
+                throw new moodle_exception('notenoughrandomquestions', 'quiz',
+                    $quizobj->view_url(), $questiondata);
+            }
+        } else {
+            $newqusetionid = $questiondata->id;
         }
 
         // Add the question to the usage. It is important we do this before we choose a variant.

@@ -109,6 +109,9 @@ class edit_renderer extends \plugin_renderer_base {
             $this->page->requires->yui_module('moodle-mod_quiz-randomquestion',
                     'M.mod_quiz.randomquestion.init');
 
+            $popups .= $this->question_by_tags_loading($pageurl, $contexts, $pagevars);
+            $this->page->requires->yui_module('moodle-mod_quiz-randomquestionbytags', 'M.mod_quiz.randomquestionbytags.init');
+
             $output .= html_writer::div($popups, 'mod_quiz_edit_forms');
 
             // Include the question chooser.
@@ -678,7 +681,17 @@ class edit_renderer extends \plugin_renderer_base {
         }
         $attributes = array_merge(array('data-header' => $title, 'data-addonpage' => $page), $attributes);
         $actions['addarandomquestion'] = new \action_menu_link_secondary($url, $icon, $str->addarandomquestion, $attributes);
-
+        // Add a randomtag question.
+        $url = new \moodle_url('/mod/quiz/addrandombytags.php', $params);
+        if ($page) {
+            $title = get_string('addrandomquestionbytagstopage', 'quiz', $page);
+        } else {
+            $title = get_string('addrandomquestionbytagsatend', 'quiz');
+        }
+        $attributes = array('class' => 'cm-edit-action addarandomquestionbytags', 'data-action' => 'addarandomquestionbytags',
+            'data-header' => $title, 'data-addonpage' => $page);
+        $actions['addarandomquestionbytags'] = new \action_menu_link_secondary($url, $icon,
+            get_string('randomquestionbytags', 'quiz'), $attributes);
         return $actions;
     }
 
@@ -739,6 +752,8 @@ class edit_renderer extends \plugin_renderer_base {
         // Display the link to the question (or do nothing if question has no url).
         if ($structure->get_question_type_for_slot($slot) == 'random') {
             $questionname = $this->random_question($structure, $slot, $pageurl);
+        } else if ($structure->get_question_type_for_slot($slot) == 'randomtag') {
+            $questionname = $this->random_question_by_tags($structure, $slot, $pageurl);
         } else {
             $questionname = $this->question_name($structure, $slot, $pageurl);
         }
@@ -995,6 +1010,36 @@ class edit_renderer extends \plugin_renderer_base {
     }
 
     /**
+     * Renders html to display a randomtag question the link to edit the configuration
+     *
+     * @param structure $structure object containing the structure of the quiz.
+     * @param int $slot which slot we are outputting.
+     * @param \moodle_url $pageurl the canonical URL of this page.
+     * @return string HTML to output.
+     */
+    public function random_question_by_tags(structure $structure, $slot, $pageurl) {
+        global $DB;
+        $question = $structure->get_question_in_slot($slot);
+        $editurl = new \moodle_url('/question/question.php', array(
+            'returnurl' => $pageurl->out_as_local_url(),
+            'cmid' => $structure->get_cmid(), 'id' => $question->id));
+        $temp = clone($question);
+        $temp->questiontext = '';
+        $instancename = quiz_question_tostring($temp);
+
+        $configuretitle = get_string('configurerandomquestion', 'quiz');
+        $qtype = \question_bank::get_qtype($question->qtype, false);
+        $namestr = $qtype->local_name();
+        $icon = $this->pix_icon('icon', $namestr, $qtype->plugin_name(), array('title' => $namestr,
+            'class' => 'icon activityicon', 'alt' => ' ', 'role' => 'presentation'));
+
+        $editicon = $this->pix_icon('t/edit', $configuretitle, 'moodle', array('title' => ''));
+
+        return html_writer::link($editurl, $icon . $editicon, array('title' => $configuretitle)) .
+            ' ' . $instancename;
+    }
+
+    /**
      * Display the 'marked out of' information for a question.
      * Along with the regrade action.
      * @param structure $structure object containing the structure of the quiz.
@@ -1060,6 +1105,15 @@ class edit_renderer extends \plugin_renderer_base {
     }
 
     /**
+     * Render the contents of the question randomtag pop-up in its initial state,
+     * when it just contains a loading progress indicator.
+     * @return string HTML to output.
+     */
+    public function question_by_tags_loading() {
+        return html_writer::div($this->pix_icon('i/loading', get_string('loading')), 'questionbytagsloading');
+    }
+
+    /**
      * Return random question form.
      * @param \moodle_url $thispageurl the canonical URL of this page.
      * @param \question_edit_contexts $contexts the relevant question bank contexts.
@@ -1080,6 +1134,30 @@ class edit_renderer extends \plugin_renderer_base {
                 'cmid' => $thispageurl->param('cmid'),
         ));
         return html_writer::div($randomform->render(), 'randomquestionformforpopup');
+    }
+
+    /**
+     * Return randomtag question form.
+     * @param \moodle_url $thispageurl the canonical URL of this page.
+     * @param \question_edit_contexts $contexts the relevant question bank contexts.
+     * @param array $pagevars the variables from {@link \question_edit_setup()}.
+     * @return string HTML to output.
+     */
+    protected function random_question_by_tags_form(\moodle_url $thispageurl, \question_edit_contexts $contexts, array $pagevars) {
+        if (!$contexts->have_cap('moodle/question:useall')) {
+            return '';
+        }
+        $randombytagsform = new \quiz_add_random_by_tags_form(new \moodle_url('/mod/quiz/addrandombytags.php'),
+            array('contexts' => $contexts, 'cat' => $pagevars['cat']));
+
+        $randombytagsform->set_data(array(
+            'category' => $pagevars['cat'],
+            'returnurl' => $thispageurl->out_as_local_url(true),
+            'randomnumber' => 1,
+            'cmid' => $thispageurl->param('cmid'),
+        ));
+
+        return html_writer::div($randombytagsform->render(), 'randomquestionbytagsformforpopup');
     }
 
     /**
@@ -1251,5 +1329,23 @@ class edit_renderer extends \plugin_renderer_base {
         $qbank = $questionbank->render('editq', $pagevars['qpage'], $pagevars['qperpage'],
                 $pagevars['cat'], $pagevars['recurse'], $pagevars['showhidden'], $pagevars['qbshowtext']);
         return html_writer::div(html_writer::div($qbank, 'bd'), 'questionbankformforpopup');
+    }
+
+    /**
+     * Return the contents of the question randomtag, to be displayed in the question-randomtag pop-up.
+     *
+     * @param \mod_quiz\question\bank\custom_view $questionbank the question bank view object.
+     * @param array $pagevars the variables from {@link \question_edit_setup()}.
+     * @return string HTML to output / send back in response to an AJAX request.
+     */
+    public function random_by_tags_contents(\question_category_object $qcobject, $contexts, $pagevars, $cmid, $returnurl) {
+        $mform = new \quiz_add_random_by_tags_form(new \moodle_url('/mod/quiz/addrandombytags.php'),
+            array('contexts' => $contexts, 'cat' => $pagevars['cat'], 'includesubcategories' => $pagevars['includesubcategories'],
+                'numbertoadd' => $pagevars['numbertoadd']));
+        $mform->set_data(array(
+            'cmid' => $cmid,
+            'returnurl' => $returnurl
+        ));
+        return $mform->render();
     }
 }

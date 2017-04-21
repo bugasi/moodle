@@ -181,7 +181,7 @@ class structure {
             return false;
         }
 
-        if (in_array($this->get_question_type_for_slot($slotnumber), array('random', 'missingtype'))) {
+        if (in_array($this->get_question_type_for_slot($slotnumber), array('random', 'missingtype', 'randomtag'))) {
             return \question_engine::can_questions_finish_during_the_attempt(
                     $this->quizobj->get_quiz()->preferredbehaviour);
         }
@@ -909,7 +909,7 @@ class structure {
         }
 
         $qtype = $DB->get_field('question', 'qtype', array('id' => $slot->questionid));
-        if ($qtype === 'random') {
+        if ($qtype === 'random' || $qtype === 'randomtag') {
             // This function automatically checks if the question is in use, and won't delete if it is.
             question_delete_question($slot->questionid);
         }
