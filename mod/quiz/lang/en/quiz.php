@@ -942,3 +942,11 @@ $string['wronguse'] = 'You can not use this page like that';
 $string['xhtml'] = 'XHTML';
 $string['youneedtoenrol'] = 'You need to enrol in this course before you can attempt this quiz';
 $string['yourfinalgradeis'] = 'Your final grade for this quiz is {$a}.';
+
+$string['randomquestionbytags'] = 'Add random question by tags';
+$string['addrandomquestionbytagsatend'] = 'Add a random question by tags at the end';
+$string['addrandomquestionbytagstopage'] = 'Add a random question by tags to page {$a}';
+$string['addrandomquestionbytagstoquiz'] = 'Add a random question by tags to quiz {$a}';
+$string['includetags'] = 'Include questions with tags:';
+$string['excludetags'] = 'Exclude questions with tags:';
+$string['randombytagsnoscriptwarning'] = 'To add a randomtag question you have to enable javascript first.';

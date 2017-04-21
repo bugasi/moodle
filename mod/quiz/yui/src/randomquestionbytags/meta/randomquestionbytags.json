@@ -1,0 +1,11 @@
+{
+    "moodle-mod_quiz-randomquestionbytags": {
+        "requires": [
+            "base",
+            "event",
+            "node",
+            "io",
+            "moodle-core-notification-dialogue"
+        ]
+    }
+}

@@ -179,7 +179,7 @@ function quiz_start_new_attempt($quizobj, $quba, $attempt, $attemptnumber, $time
         $slot += 1;
         $maxmark[$slot] = $questiondata->maxmark;
         $page[$slot] = $questiondata->page;
-        if ($questiondata->qtype == 'random') {
+        if ($questiondata->qtype == 'random' || $questiondata->qtype == 'randomtag') {
             $randomfound = true;
             continue;
         }
@@ -204,32 +204,58 @@ function quiz_start_new_attempt($quizobj, $quba, $attempt, $attemptnumber, $time
 
         foreach ($quizobj->get_questions() as $questiondata) {
             $slot += 1;
-            if ($questiondata->qtype != 'random') {
+            if ($questiondata->qtype != 'random' && $questiondata->qtype != 'randomtag') {
                 continue;
             }
-
-            // Deal with fixed random choices for testing.
-            if (isset($questionids[$quba->next_slot_number()])) {
-                if ($randomloader->is_question_available($questiondata->category,
+            if ($questiondata->qtype == 'random') {
+                // Deal with fixed random choices for testing.
+                if (isset($questionids[$quba->next_slot_number()])) {
+                    if ($randomloader->is_question_available($questiondata->category,
                         (bool) $questiondata->questiontext, $questionids[$quba->next_slot_number()])) {
-                    $questions[$slot] = question_bank::load_question(
+                        $questions[$slot] = question_bank::load_question(
                             $questionids[$quba->next_slot_number()], $quizobj->get_quiz()->shuffleanswers);
-                    continue;
+                        continue;
+                    } else {
+                        throw new coding_exception('Forced question id not available.');
+                    }
+                }
+
+                // Normal case, pick one at random.
+                $questionid = $randomloader->get_next_question_id($questiondata->category,
+                    (bool) $questiondata->questiontext);
+                if ($questionid === null) {
+                    throw new moodle_exception('notenoughrandomquestions', 'quiz',
+                        $quizobj->view_url(), $questiondata);
+                }
+
+                $questions[$slot] = question_bank::load_question($questionid,
+                    $quizobj->get_quiz()->shuffleanswers);
+            } else if ($questiondata->qtype == 'randomtag') {
+                $availableids = question_bank::get_qtype('randomtag')->get_available_questions_from_category($questiondata->category,
+                    (bool) $questiondata->questiontext, $questiondata->id);
+                if ($availableids === null) {
+                    throw new moodle_exception('notenoughrandomquestions', 'quiz',
+                        $quizobj->view_url(), $questiondata);
+                }
+                shuffle($availableids);
+
+                $idtouse = null;
+                foreach ($availableids as $avid) {
+                    if ($randomloader->is_question_available($questiondata->category, (bool) $questiondata->questiontext, $avid)) {
+                        $idtouse = $avid;
+                        break;
+                    }
+                }
+
+                if ($idtouse === null) {
+                    throw new moodle_exception('notenoughrandomquestions', 'quiz',
+                        $quizobj->view_url(), $questiondata);
                 } else {
-                    throw new coding_exception('Forced question id not available.');
+                    $questions[$slot] = question_bank::load_question($idtouse,
+                        $quizobj->get_quiz()->shuffleanswers);
                 }
             }
 
-            // Normal case, pick one at random.
-            $questionid = $randomloader->get_next_question_id($questiondata->category,
-                        (bool) $questiondata->questiontext);
-            if ($questionid === null) {
-                throw new moodle_exception('notenoughrandomquestions', 'quiz',
-                                           $quizobj->view_url(), $questiondata);
-            }
-
-            $questions[$slot] = question_bank::load_question($questionid,
-                    $quizobj->get_quiz()->shuffleanswers);
         }
     }
 
@@ -2088,6 +2114,8 @@ function quiz_add_quiz_question($questionid, $quiz, $page = 0, $maxmark = null) 
     $trans->allow_commit();
 }
 
+
+
 /**
  * Add a random question to the quiz at a given point.
  * @param object $quiz the quiz settings.
@@ -2142,6 +2170,47 @@ function quiz_add_random_questions($quiz, $addonpage, $categoryid, $number,
         $question = new stdClass();
         $question->qtype = 'random';
         $question = question_bank::get_qtype('random')->save_question($question, $form);
+        if (!isset($question->id)) {
+            print_error('cannotinsertrandomquestion', 'quiz');
+        }
+        quiz_add_quiz_question($question->id, $quiz, $addonpage);
+    }
+}
+
+/**
+ * Add a randomtag question to the quiz at a given point.
+ * @param object $quiz the quiz settings.
+ * @param int $addonpage the page on which to add the question.
+ * @param int $categoryid the question category to add the question from.
+ * @param int $number the number of random questions to add.
+ * @param bool $includesubcategories whether to include questoins from subcategories.
+ * @param string $tags comma separated list of tags a question must have assigned to be eligible to to be selected
+ * @param string $nottags commma separated list of tags is not allowed to have assigned in order to be eligible to be selected
+ */
+function quiz_add_random_questions_by_tags($quiz, $addonpage, $categoryid, $number,
+                                           $includesubcategories, $tags, $nottags) {
+    global $DB;
+
+    $category = $DB->get_record('question_categories', array('id' => $categoryid));
+    if (!$category) {
+        print_error('invalidcategoryid', 'error');
+    }
+
+    $catcontext = context::instance_by_id($category->contextid);
+    require_capability('moodle/question:useall', $catcontext);
+
+    for ($i = 0; $i < $number; $i += 1) {
+        $form = new stdClass();
+        $form->questiontext = array('text' => ($includesubcategories ? '1' : '0'), 'format' => 0);
+        $form->category = $category->id . ',' . $category->contextid;
+        $form->defaultmark = 1;
+        $form->hidden = 1;
+        $form->qtags = $tags;
+        $form->qnottags = $nottags;
+        $form->stamp = make_unique_id_code(); // Set the unique code (not to be changed).
+        $question = new stdClass();
+        $question->qtype = 'randomtag';
+        $question = question_bank::get_qtype('randomtag')->save_question($question, $form);
         if (!isset($question->id)) {
             print_error('cannotinsertrandomquestion', 'quiz');
         }
