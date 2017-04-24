@@ -123,7 +123,7 @@ class quiz_add_random_by_tags_form extends moodleform {
 
         if ($categoryparam) {
             list($cat) = explode(',', $categoryparam);
-            if (isset($this->_customdata['includesubcategories'])) {
+            if (isset($this->_customdata['includesubcategories']) && $this->_customdata['includesubcategories']) {
                 $cats = question_categorylist($cat);
             } else {
                 $cats = array($cat);
@@ -159,4 +159,14 @@ class quiz_add_random_by_tags_form extends moodleform {
         }
         return $randomcount;
     }
+
+    function get_data() {
+        $data = parent::get_data();
+        $intags = optional_param_array('tags', [], PARAM_INT);
+        $nottags = optional_param_array('nottags', [], PARAM_INT);
+        $data->tags = $intags;
+        $data->nottags = $nottags;
+        return $data;
+    }
+
 }

@@ -44,14 +44,26 @@ class backup_qtype_randomtag_plugin extends backup_qtype_plugin {
 
         $plugin->add_child($pluginwrapper);
 
-        $randomtag = new backup_nested_element('randomtag', array('id'), array(
-             'intags', 'outtags'
-        ));
+        $randomtag = new backup_nested_element('randomtag', array('id'), array('intags', 'outtags'));
+        $tags = new backup_nested_element('usedtags');
+        $tag = new backup_nested_element('usedtag', array('id'), array('name', 'rawname'));
+        $outtags = new backup_nested_element('excludedtags');
+        $outtag = new backup_nested_element('excludedtag', array('id'), array('name', 'rawname'));
+        $randomtag->add_child($tags);
+        $tags->add_child($tag);
+        $randomtag->add_child($outtags);
+        $outtags->add_child($outtag);
+
+        $tag->set_source_sql("SELECT t.id, t.name, t.rawname FROM mdl_tag AS t 
+         JOIN mdl_question_randomtag AS r ON FIND_IN_SET(t.id, r.intags) WHERE r.id = ?;", array(backup::VAR_PARENTID));
+
+        $outtag->set_source_sql("SELECT t.id, t.name, t.rawname FROM mdl_tag AS t 
+         JOIN mdl_question_randomtag AS r ON FIND_IN_SET(t.id, r.outtags) WHERE r.id = ?;", array(backup::VAR_PARENTID));
 
         $pluginwrapper->add_child($randomtag);
 
         $randomtag->set_source_table('question_randomtag', array('questionid' => backup::VAR_PARENTID));
-
         return $plugin;
     }
+
 }

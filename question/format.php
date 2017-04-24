@@ -798,7 +798,7 @@ class qformat_default {
             }
 
             // do not export random questions
-            if ($question->qtype == 'random') {
+            if ($question->qtype == 'random' || 'randomtag') {
                 continue;
             }
 

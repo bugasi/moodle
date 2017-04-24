@@ -40,7 +40,6 @@ $scrollpos = optional_param('scrollpos', 0, PARAM_INT);
 $tags = optional_param_array('tags', [], PARAM_INT);
 $nottags = optional_param_array('nottags', [], PARAM_INT);
 
-
 // Get the course object and related bits.
 if (!$course = $DB->get_record('course', array('id' => $quiz->course))) {
     print_error('invalidcourseid');
@@ -76,7 +75,7 @@ $qcobject = new question_category_object(
     $contexts->having_cap('moodle/question:add'));
 
 $mform = new quiz_add_random_by_tags_form(new moodle_url('/mod/quiz/addrandombytags.php'),
-    array('contexts' => $contexts, 'cat' => $pagevars['cat']));
+    array('contexts' => $contexts, 'cat' => $pagevars['cat'], 'tags'=>$tags, 'nottags'=>$nottags));
 
 if ($mform->is_cancelled()) {
     redirect($returnurl);
