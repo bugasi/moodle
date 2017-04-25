@@ -136,23 +136,25 @@ class restore_qtype_randomtag_plugin extends restore_qtype_plugin {
             JOIN {backup_ids_temp} bi ON bi.newitemid = qrt.questionid
             WHERE bi.backupid = ?
         ", array($this->get_restoreid()));
-        if($data->intags) {
-            $oldtags = explode(",", $data->intags);
-            $newtags = [];
-            foreach ($oldtags as $oldtag) {
-                $newtags[] = $this->get_mappingid('usedtag', $oldtag);
+        if($data) {
+            if($data->intags) {
+                $oldtags = explode(",", $data->intags);
+                $newtags = [];
+                foreach ($oldtags as $oldtag) {
+                    $newtags[] = $this->get_mappingid('usedtag', $oldtag);
+                }
+                $data->intags = implode(",", $newtags);
             }
-            $data->intags = implode(",", $newtags);
-        }
-        if($data->outtags) {
-            $newtags = [];
-            $oldtags = explode(',', $data->outtags);
-            foreach($oldtags as $t) {
-                $newtags[] = $this->get_mappingid('excludedtag', $t);
+            if($data->outtags) {
+                $newtags = [];
+                $oldtags = explode(',', $data->outtags);
+                foreach($oldtags as $t) {
+                    $newtags[] = $this->get_mappingid('excludedtag', $t);
+                }
+                $data->outtags = implode(",", $newtags);
             }
-            $data->outtags = implode(",", $newtags);
+            $DB->update_record('question_randomtag', $data);
         }
-        $DB->update_record('question_randomtag', $data);
         // Update any blank randomtag questiontexts to 0.
         $sql = "UPDATE {question}
                    SET questiontext = '0'
