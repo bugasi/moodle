@@ -37,8 +37,8 @@ $returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
 $addonpage = optional_param('addonpage', 0, PARAM_INT);
 $category = optional_param('category', 0, PARAM_INT);
 $scrollpos = optional_param('scrollpos', 0, PARAM_INT);
-$tags = optional_param_array('tags', [], PARAM_INT);
-$nottags = optional_param_array('nottags', [], PARAM_INT);
+$tags = optional_param_array('intags', [], PARAM_INT);
+$outtags = optional_param_array('outtags', [], PARAM_INT);
 
 // Get the course object and related bits.
 if (!$course = $DB->get_record('course', array('id' => $quiz->course))) {
@@ -75,7 +75,7 @@ $qcobject = new question_category_object(
     $contexts->having_cap('moodle/question:add'));
 
 $mform = new quiz_add_random_by_tags_form(new moodle_url('/mod/quiz/addrandombytags.php'),
-    array('contexts' => $contexts, 'cat' => $pagevars['cat'], 'tags'=>$tags, 'nottags'=>$nottags));
+    array('contexts' => $contexts, 'cat' => $pagevars['cat'], 'intags' => $tags, 'outtags' => $outtags));
 
 if ($mform->is_cancelled()) {
     redirect($returnurl);
@@ -84,11 +84,13 @@ if ($mform->is_cancelled()) {
 if ($data = $mform->get_data()) {
     list($categoryid) = explode(',', $data->category);
     $includesubcategories = !empty($data->includesubcategories);
+    $includetype = $data->includetype;
 
-    $tags = object_property_exists($data, 'tags') ? $data->tags : [];
-    $nottags = object_property_exists($data, 'nottags') ? $data->nottags : [];
+    $tags = object_property_exists($data, 'intags') ? $data->intags : [];
+    $outtags = object_property_exists($data, 'outtags') ? $data->outtags : [];
 
-    quiz_add_random_questions_by_tags($quiz, $addonpage, $categoryid, $data->numbertoadd, $includesubcategories, $tags, $nottags);
+    quiz_add_random_questions_by_tags($quiz, $addonpage, $categoryid, $data->numbertoadd, $includesubcategories, $includetype,
+        $tags, $outtags);
     quiz_delete_previews($quiz);
     quiz_update_sumgrades($quiz);
     redirect($returnurl);

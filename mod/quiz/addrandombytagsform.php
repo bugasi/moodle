@@ -42,18 +42,23 @@ class quiz_add_random_by_tags_form extends moodleform {
         $mform->setDisableShortforms();
 
         $contexts = $this->_customdata['contexts'];
-        $usedtags = isset($this->_customdata['tags']) ? $this->_customdata['tags'] : [];
-        $nottags = isset($this->_customdata['nottags']) ? $this->_customdata['nottags'] : [];
+        $usedtags = isset($this->_customdata['intags']) ? $this->_customdata['intags'] : [];
+        $outtags = isset($this->_customdata['outtags']) ? $this->_customdata['outtags'] : [];
+        $includetype = isset($this->_customdata['includetype']) ? $this->_customdata['includetype'] : 1;
         $usablecontexts = $contexts->having_cap('moodle/question:useall');
 
         $mform->addElement('header', 'categoryheader', '');
-        $mform->addElement('select', 'tags', get_string('includetags', 'quiz'), $tags, ['class' => 'select']);
-        $mform->getElement('tags')->setMultiple(true);
-        $mform->getElement('tags')->setSelected($usedtags);
+        $mform->addElement('select', 'intags', get_string('includetags', 'quiz'), $tags, ['class' => 'select']);
+        $mform->getElement('intags')->setMultiple(true);
+        $mform->getElement('intags')->setSelected($usedtags);
 
-        $mform->addElement('select', 'nottags', get_string('excludetags', 'quiz'), $tags, ['class' => 'select']);
-        $mform->getElement('nottags')->setMultiple(true);
-        $mform->getElement('nottags')->setSelected($nottags);
+        $mform->addElement('select', 'includetype', get_string('includetagstype', 'quiz'), array(
+            "1" => get_string("includetagstypeany", "quiz"), "2" => get_string("includetagstypeall", "quiz")));
+        $mform->getElement('includetype')->setSelected($includetype);
+
+        $mform->addElement('select', 'outtags', get_string('excludetags', 'quiz'), $tags, ['class' => 'select']);
+        $mform->getElement('outtags')->setMultiple(true);
+        $mform->getElement('outtags')->setSelected($outtags);
 
         $mform->addElement('questioncategory', 'category', get_string('category'),
             array('contexts' => $usablecontexts, 'top' => false), ['class' => 'select searchoptions']);
@@ -158,15 +163,6 @@ class quiz_add_random_by_tags_form extends moodleform {
             $randomcount[$i] = $i;
         }
         return $randomcount;
-    }
-
-    function get_data() {
-        $data = parent::get_data();
-        $intags = optional_param_array('tags', [], PARAM_INT);
-        $nottags = optional_param_array('nottags', [], PARAM_INT);
-        $data->tags = $intags;
-        $data->nottags = $nottags;
-        return $data;
     }
 
 }

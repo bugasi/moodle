@@ -170,21 +170,21 @@ class qtype_randomtag extends question_type {
             array('id' => $question->category), '*', MUST_EXIST);
         $updateobject->name = $this->question_name($category, !empty($question->questiontext), $question);
 
-        $options = $DB->get_record('question_randomtag', array('questionid' => $question->id));
+        $options = $DB->get_record('qtype_randomtag_options', array('questionid' => $question->id));
 
         if ($options) {
             $options->questionid = $question->id;
-            $options->numberquestions = 1;
-            $options->intags = implode(',', $question->intags);
-            $options->outtags = implode(',', $question->nottags);
-            $DB->update_record('question_randomtag', $options);
+            $options->includetype = $question->includetype;
+            $options->intags = implode(',', object_property_exists($question, 'intags') ? $question->intags : []);
+            $options->outtags = implode(',', object_property_exists($question, 'outtags') ? $question->outtags : []);
+            $DB->update_record('qtype_randomtag_options', $options);
         } else {
             $options = new stdClass();
             $options->questionid = $question->id;
-            $options->numberquestions = 1;
+            $options->includetype = $question->includetype;
             $options->intags = implode(',', $question->qtags);
-            $options->outtags = implode(',', $question->qnottags);
-            $DB->insert_record('question_randomtag', $options);
+            $options->outtags = implode(',', $question->qouttags);
+            $DB->insert_record('qtype_randomtag_options', $options);
         }
         return $DB->update_record('question', $updateobject);
     }
@@ -212,7 +212,7 @@ class qtype_randomtag extends question_type {
         $extraparams = [];
 
         if ($qid) {
-            $opt = $DB->get_record('question_randomtag', ['questionid' => $qid]);
+            $opt = $DB->get_record('qtype_randomtag_options', ['questionid' => $qid]);
             if ($opt) {
                 $intags = $opt->intags;
                 $outtags = $opt->outtags;
@@ -222,8 +222,14 @@ class qtype_randomtag extends question_type {
                         $extraconditions .= " AND ";
                     }
                     list($where, $params) = $DB->get_in_or_equal(explode(',', $intags), SQL_PARAMS_NAMED, 'tag');
-                    $extraconditions .= "(SELECT COUNT(*) as tagcount FROM {tag_instance} ti " .
-                        "WHERE itemid={question}.id AND tagid $where)=". count(explode(',', $intags));
+                    if ($opt->includetype == 1) {
+                        $extraconditions .= "(SELECT COUNT(*) as tagcount FROM {tag_instance} ti " .
+                            "WHERE itemid={question}.id AND tagid $where)>0";
+                    } else {
+                        $extraconditions .= "(SELECT COUNT(*) as tagcount FROM {tag_instance} ti " .
+                            "WHERE itemid={question}.id AND tagid $where)=". count(explode(',', $intags));
+                    }
+
                     $extraparams = $extraparams + $params;
                 }
                 if ($outtags) {
@@ -292,7 +298,7 @@ class qtype_randomtag extends question_type {
 
     public function delete_question($questionid, $contextid) {
         global $DB;
-        $DB->delete_records('question_randomtag', ['questionid' => $questionid]);
+        $DB->delete_records('qtype_randomtag_options', ['questionid' => $questionid]);
         parent::delete_question($questionid, $contextid);
     }
 

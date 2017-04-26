@@ -4,13 +4,13 @@
        xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
 >
     <TABLES>
-        <TABLE NAME="question_randomtag" COMMENT="Random Question by tags">
+        <TABLE NAME="qtype_randomtag_options" COMMENT="Random Question by tags">
             <FIELDS>
                 <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
                 <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
-                <FIELD NAME="numberquestions" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
                 <FIELD NAME="intags" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
                 <FIELD NAME="outtags" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+                <FIELD NAME="includetype" TYPE="int" LENGTH="2" NOTNULL="true" UNSIGNED="true" DEFAULT="1" SEQUENCE="false"/>
             </FIELDS>
             <KEYS>
                 <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

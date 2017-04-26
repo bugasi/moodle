@@ -57,17 +57,17 @@ class restore_qtype_randomtag_plugin extends restore_qtype_plugin {
         $newquestionid   = $this->get_new_parentid('question');
 
         $data->questionid = $newquestionid;
-        $DB->insert_record('question_randomtag', $data);
+        $DB->insert_record('qtype_randomtag_options', $data);
     }
 
     public function process_usedtag($d) {
         $data = (object)$d;
-        if($data && object_property_exists($data, 'rawname') && $data->rawname) {
+        if ($data && object_property_exists($data, 'rawname') && $data->rawname) {
             if (core_tag_tag::is_enabled('core_question', 'question')) {
                 $collectionid = core_tag_area::get_collection('core_question', 'question');
                 $tags = core_tag_tag::create_if_missing($collectionid, array($data->rawname));
                 $tag = array_shift($tags);
-                if(!$this->get_mappingid('usedtag', $data->id)) {
+                if (!$this->get_mappingid('usedtag', $data->id)) {
                     $this->set_mapping('usedtag', $data->id, $tag->id);
                 }
             }
@@ -76,12 +76,12 @@ class restore_qtype_randomtag_plugin extends restore_qtype_plugin {
 
     public function process_excludedtag($d) {
         $data = (object)$d;
-        if($data && object_property_exists($data, 'rawname') && $data->rawname) {
+        if ($data && object_property_exists($data, 'rawname') && $data->rawname) {
             if (core_tag_tag::is_enabled('core_question', 'question')) {
                 $collectionid = core_tag_area::get_collection('core_question', 'question');
                 $tags = core_tag_tag::create_if_missing($collectionid, array($data->rawname));
                 $tag = array_shift($tags);
-                if(!$this->get_mappingid('excludedtag', $data->id)) {
+                if (!$this->get_mappingid('excludedtag', $data->id)) {
                     $this->set_mapping('excludedtag', $data->id, $tag->id);
                 }
             }
@@ -132,12 +132,12 @@ class restore_qtype_randomtag_plugin extends restore_qtype_plugin {
         global $DB;
         $data = $DB->get_record_sql("
             SELECT qrt.id, qrt.intags, qrt.outtags
-            FROM {question_randomtag} qrt
+            FROM {qtype_randomtag_options} qrt
             JOIN {backup_ids_temp} bi ON bi.newitemid = qrt.questionid
             WHERE bi.backupid = ?
         ", array($this->get_restoreid()));
-        if($data) {
-            if($data->intags) {
+        if ($data) {
+            if ($data->intags) {
                 $oldtags = explode(",", $data->intags);
                 $newtags = [];
                 foreach ($oldtags as $oldtag) {
@@ -145,15 +145,15 @@ class restore_qtype_randomtag_plugin extends restore_qtype_plugin {
                 }
                 $data->intags = implode(",", $newtags);
             }
-            if($data->outtags) {
+            if ($data->outtags) {
                 $newtags = [];
                 $oldtags = explode(',', $data->outtags);
-                foreach($oldtags as $t) {
+                foreach ($oldtags as $t) {
                     $newtags[] = $this->get_mappingid('excludedtag', $t);
                 }
                 $data->outtags = implode(",", $newtags);
             }
-            $DB->update_record('question_randomtag', $data);
+            $DB->update_record('qtype_randomtag_options', $data);
         }
         // Update any blank randomtag questiontexts to 0.
         $sql = "UPDATE {question}
