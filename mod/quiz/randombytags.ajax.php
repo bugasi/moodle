@@ -37,7 +37,9 @@ require_capability('mod/quiz:manage', $contexts->lowest());
 
 $includesubcategories = optional_param('includesubcategories', 0, PARAM_BOOL);
 $numbertoadd = optional_param('numbertoadd', 1, PARAM_INT);
-
+$includetype = optional_param('includetype', 1, PARAM_INT);
+$intags = optional_param_array('intags', [], PARAM_INT);
+$outtags = optional_param_array('outtags', [], PARAM_INT);
 $defaultcategoryobj = question_make_default_categories($contexts->all());
 $defaultcategory = $defaultcategoryobj->id . ',' . $defaultcategoryobj->contextid;
 
@@ -52,6 +54,9 @@ $qcobject = new question_category_object(
 
 $pagevars['includesubcategories'] = $includesubcategories;
 $pagevars['numbertoadd'] = $numbertoadd;
+$pagevars['includetype'] = $includetype;
+$pagevars['intags'] = $intags;
+$pagevars['outtags'] = $outtags;
 $output = $PAGE->get_renderer('mod_quiz', 'edit');
 $returnurl = '/mod/quiz/edit.php?cmid=' . $cmid;
 $contents = $output->random_by_tags_contents($qcobject, $contexts, $pagevars, $cmid, $returnurl);

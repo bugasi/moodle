@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'qtype_randomtag';
-$plugin->version   = 2017041200;
+$plugin->version   = 2017042600;
 
 $plugin->requires  = 2016112900;
 

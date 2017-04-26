@@ -115,18 +115,24 @@ class qtype_randomtag_edit_form extends question_edit_form {
     protected function definition_inner($mform) {
         global $DB;
         $question = $this->question;
-        $opts = $DB->get_record('question_randomtag', array("questionid" => $question->id));
-
+        $opts = $DB->get_record('qtype_randomtag_options', array("questionid" => $question->id));
+        $defaultintags = explode(',', $opts->intags ? $opts->intags : '');
+        $defaultouttags = explode(',', $opts->outtags ? $opts->outtags : '');
+        $intags = optional_param_array('intags', ($defaultintags ? $defaultintags : []), PARAM_INT);
+        $outtags = optional_param_array('outtags', ($defaultouttags ? $defaultouttags : []), PARAM_INT);
         $tags = $this->get_tags_used();
         $mform->addElement('select', 'intags', get_string('includetags', 'quiz'), $tags, ['class' => 'select searchoptions']);
         $mform->getElement('intags')->setMultiple(true);
-        $intags = $opts->intags;
-        $mform->getElement('intags')->setSelected(explode(',', ($intags ? $intags : '')));
+        $mform->getElement('intags')->setSelected($intags);
 
-        $mform->addElement('select', 'nottags', get_string('excludetags', 'quiz'), $tags, ['class' => 'select searchoptions']);
-        $mform->getElement('nottags')->setMultiple(true);
-        $nottags = $opts->outtags;
-        $mform->getElement('nottags')->setSelected(explode(',', ($nottags ? $nottags : '')));
+        $mform->addElement('select', 'includetype', get_string('includetagstype', 'quiz'), array(
+            "1" => get_string("includetagstypeany", "quiz"), "2" => get_string("includetagstypeall", "quiz")));
+        $includetype = $opts->includetype;
+        $mform->getElement('includetype')->setSelected($includetype);
+
+        $mform->addElement('select', 'outtags', get_string('excludetags', 'quiz'), $tags, ['class' => 'select searchoptions']);
+        $mform->getElement('outtags')->setMultiple(true);
+        $mform->getElement('outtags')->setSelected($outtags);
     }
 
     private function get_tags_used() {
@@ -177,13 +183,14 @@ class qtype_randomtag_edit_form extends question_edit_form {
             $data = parent::get_data();
             $def = $this->category->id . ',' . $this->category->contextid;
             $cat = optional_param('cat', $def, PARAM_SEQUENCE);
-            $intags = optional_param_array('intags', [], PARAM_INT);
-            $nottags = optional_param_array('nottags', [], PARAM_INT);
-            $includesubcategories = optional_param('includesubcategories', $this->question->questiontext, PARAM_BOOL);
+
+            if (object_property_exists($data, 'includesubcategories')) {
+                $data->questiontext['text'] = 1;
+            } else {
+                $data->questiontext['text'] = 0;
+            }
             $data->category = $cat;
-            $data->intags = $intags;
-            $data->nottags = $nottags;
-            $data->questiontext['text'] = $includesubcategories;
+
             return $data;
         } else {
             return null;

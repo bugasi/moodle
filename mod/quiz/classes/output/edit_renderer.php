@@ -1341,7 +1341,8 @@ class edit_renderer extends \plugin_renderer_base {
     public function random_by_tags_contents(\question_category_object $qcobject, $contexts, $pagevars, $cmid, $returnurl) {
         $mform = new \quiz_add_random_by_tags_form(new \moodle_url('/mod/quiz/addrandombytags.php'),
             array('contexts' => $contexts, 'cat' => $pagevars['cat'], 'includesubcategories' => $pagevars['includesubcategories'],
-                'numbertoadd' => $pagevars['numbertoadd']));
+                'numbertoadd' => $pagevars['numbertoadd'], 'includetype' => $pagevars['includetype'],
+                'intags' => $pagevars['intags'], 'outtags' => $pagevars['outtags']));
         $mform->set_data(array(
             'cmid' => $cmid,
             'returnurl' => $returnurl

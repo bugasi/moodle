@@ -2184,11 +2184,12 @@ function quiz_add_random_questions($quiz, $addonpage, $categoryid, $number,
  * @param int $categoryid the question category to add the question from.
  * @param int $number the number of random questions to add.
  * @param bool $includesubcategories whether to include questoins from subcategories.
+ * @param int $includetype 1 = questions with any of the specified tags will be selected, 2 = only questions with all of the specified tags will be selected
  * @param string $tags comma separated list of tags a question must have assigned to be eligible to to be selected
- * @param string $nottags commma separated list of tags is not allowed to have assigned in order to be eligible to be selected
+ * @param string $outtags commma separated list of tags is not allowed to have assigned in order to be eligible to be selected
  */
 function quiz_add_random_questions_by_tags($quiz, $addonpage, $categoryid, $number,
-                                           $includesubcategories, $tags, $nottags) {
+                                           $includesubcategories, $includetype, $tags, $outtags) {
     global $DB;
 
     $category = $DB->get_record('question_categories', array('id' => $categoryid));
@@ -2206,7 +2207,8 @@ function quiz_add_random_questions_by_tags($quiz, $addonpage, $categoryid, $numb
         $form->defaultmark = 1;
         $form->hidden = 1;
         $form->qtags = $tags;
-        $form->qnottags = $nottags;
+        $form->qouttags = $outtags;
+        $form->includetype = $includetype;
         $form->stamp = make_unique_id_code(); // Set the unique code (not to be changed).
         $question = new stdClass();
         $question->qtype = 'randomtag';
