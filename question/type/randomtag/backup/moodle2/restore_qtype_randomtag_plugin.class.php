@@ -15,8 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package     moodlecore
- * @subpackage  backup-moodle2
+ * @package     qtype_randomtag
  * @copyright   2017 Andreas Figge (BuGaSi GmbH)
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -46,44 +45,33 @@ class restore_qtype_randomtag_plugin extends restore_qtype_plugin {
         $elepath = $this->get_pathfor('/randomtag');
 
         $paths[] = new restore_path_element($elename, $elepath);
-        $paths[] = new restore_path_element('usedtag', $this->get_pathfor('/randomtag/usedtags/usedtag'));
-        $paths[] = new restore_path_element('excludedtag', $this->get_pathfor('/randomtag/excludedtags/excludedtag'));
+        $paths[] = new restore_path_element('randomtagtag', $this->get_pathfor('/randomtag/randomtagtags/randomtagtag'));
         return $paths;
     }
 
     public function process_randomtag($data) {
         global $DB;
         $data = (object)$data;
+        $oldid = $data->id;
         $newquestionid   = $this->get_new_parentid('question');
 
         $data->questionid = $newquestionid;
-        $DB->insert_record('qtype_randomtag_options', $data);
+        $newid = $DB->insert_record('qtype_randomtag_options', $data, true);
+        $this->set_mapping('randomtag', $oldid, $newid);
     }
 
-    public function process_usedtag($d) {
+    public function process_randomtagtag($d) {
+        global $DB;
         $data = (object)$d;
         if ($data && object_property_exists($data, 'rawname') && $data->rawname) {
             if (core_tag_tag::is_enabled('core_question', 'question')) {
+                $data->randomtagid = $this->get_new_parentid('randomtag');
                 $collectionid = core_tag_area::get_collection('core_question', 'question');
                 $tags = core_tag_tag::create_if_missing($collectionid, array($data->rawname));
                 $tag = array_shift($tags);
-                if (!$this->get_mappingid('usedtag', $data->id)) {
-                    $this->set_mapping('usedtag', $data->id, $tag->id);
-                }
-            }
-        }
-    }
-
-    public function process_excludedtag($d) {
-        $data = (object)$d;
-        if ($data && object_property_exists($data, 'rawname') && $data->rawname) {
-            if (core_tag_tag::is_enabled('core_question', 'question')) {
-                $collectionid = core_tag_area::get_collection('core_question', 'question');
-                $tags = core_tag_tag::create_if_missing($collectionid, array($data->rawname));
-                $tag = array_shift($tags);
-                if (!$this->get_mappingid('excludedtag', $data->id)) {
-                    $this->set_mapping('excludedtag', $data->id, $tag->id);
-                }
+                $data->tagid = $tag->id;
+                unset($data->rawname);
+                $DB->insert_record('qtype_randomtag_tags', $data);
             }
         }
     }
@@ -130,31 +118,6 @@ class restore_qtype_randomtag_plugin extends restore_qtype_plugin {
      */
     public function after_execute_question() {
         global $DB;
-        $data = $DB->get_record_sql("
-            SELECT qrt.id, qrt.intags, qrt.outtags
-            FROM {qtype_randomtag_options} qrt
-            JOIN {backup_ids_temp} bi ON bi.newitemid = qrt.questionid
-            WHERE bi.backupid = ?
-        ", array($this->get_restoreid()));
-        if ($data) {
-            if ($data->intags) {
-                $oldtags = explode(",", $data->intags);
-                $newtags = [];
-                foreach ($oldtags as $oldtag) {
-                    $newtags[] = $this->get_mappingid('usedtag', $oldtag);
-                }
-                $data->intags = implode(",", $newtags);
-            }
-            if ($data->outtags) {
-                $newtags = [];
-                $oldtags = explode(',', $data->outtags);
-                foreach ($oldtags as $t) {
-                    $newtags[] = $this->get_mappingid('excludedtag', $t);
-                }
-                $data->outtags = implode(",", $newtags);
-            }
-            $DB->update_record('qtype_randomtag_options', $data);
-        }
         // Update any blank randomtag questiontexts to 0.
         $sql = "UPDATE {question}
                    SET questiontext = '0'

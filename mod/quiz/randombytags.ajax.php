@@ -43,7 +43,7 @@ $outtags = optional_param_array('outtags', [], PARAM_INT);
 $defaultcategoryobj = question_make_default_categories($contexts->all());
 $defaultcategory = $defaultcategoryobj->id . ',' . $defaultcategoryobj->contextid;
 
-$qcobject = new question_category_object(
+new question_category_object(
     $pagevars['cpage'],
     $thispageurl,
     $contexts->having_one_edit_tab_cap('categories'),
@@ -52,14 +52,10 @@ $qcobject = new question_category_object(
     null,
     $contexts->having_cap('moodle/question:add'));
 
-$pagevars['includesubcategories'] = $includesubcategories;
-$pagevars['numbertoadd'] = $numbertoadd;
-$pagevars['includetype'] = $includetype;
-$pagevars['intags'] = $intags;
-$pagevars['outtags'] = $outtags;
 $output = $PAGE->get_renderer('mod_quiz', 'edit');
 $returnurl = '/mod/quiz/edit.php?cmid=' . $cmid;
-$contents = $output->random_by_tags_contents($qcobject, $contexts, $pagevars, $cmid, $returnurl);
+$contents = $output->random_by_tags_contents($contexts, $pagevars, $cmid, $returnurl, $includesubcategories,
+    $numbertoadd, $includetype, $intags, $outtags);
 
 echo json_encode(array(
     'status' => 'OK',

@@ -8,13 +8,23 @@
             <FIELDS>
                 <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
                 <FIELD NAME="questionid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
-                <FIELD NAME="intags" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
-                <FIELD NAME="outtags" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
                 <FIELD NAME="includetype" TYPE="int" LENGTH="2" NOTNULL="true" UNSIGNED="true" DEFAULT="1" SEQUENCE="false"/>
             </FIELDS>
             <KEYS>
                 <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
                 <KEY NAME="questionid" TYPE="foreign" FIELDS="questionid" REFTABLE="question" REFFIELDS="id"/>
+            </KEYS>
+        </TABLE>
+        <TABLE NAME="qtype_randomtag_tags" COMMENT="Tags for a randomtag question">
+            <FIELDS>
+                <FIELD NAME="id" SEQUENCE="true" TYPE="int" NOTNULL="true" LENGTH="10"/>
+                <FIELD NAME="randomtagid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+                <FIELD NAME="tagid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+                <FIELD NAME="included" TYPE="int" LENGTH="2" NOTNULL="true" UNSIGNED="true" DEFAULT="1" SEQUENCE="false"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+                <KEY NAME="randomtagid" TYPE="foreign" FIELDS="randomtagid" REFTABLE="qtype_randomtag_options" REFFIELDS="id"/>
             </KEYS>
         </TABLE>
     </TABLES>

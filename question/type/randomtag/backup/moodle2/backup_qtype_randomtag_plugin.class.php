@@ -15,8 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package     moodlecore
- * @subpackage  backup-moodle2
+ * @package     qtype_randomtag
  * @copyright   2017 Andreas Figge (BuGaSi GmbH)
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -44,21 +43,15 @@ class backup_qtype_randomtag_plugin extends backup_qtype_plugin {
 
         $plugin->add_child($pluginwrapper);
 
-        $randomtag = new backup_nested_element('randomtag', array('id'), array('intags', 'outtags'));
-        $tags = new backup_nested_element('usedtags');
-        $tag = new backup_nested_element('usedtag', array('id'), array('name', 'rawname'));
-        $outtags = new backup_nested_element('excludedtags');
-        $outtag = new backup_nested_element('excludedtag', array('id'), array('name', 'rawname'));
-        $randomtag->add_child($tags);
-        $tags->add_child($tag);
-        $randomtag->add_child($outtags);
-        $outtags->add_child($outtag);
+        $randomtag = new backup_nested_element('randomtag', array('id'), array('includetype'));
+        $randomtagtags = new backup_nested_element('randomtagtags');
+        $randomtagtag = new backup_nested_element('randomtagtag', array('id'), array('tagid', 'included', 'rawname'));
 
-        $tag->set_source_sql("SELECT t.id, t.name, t.rawname FROM {tag} t
-         JOIN {qtype_randomtag_options} r ON FIND_IN_SET(t.id, r.intags) WHERE r.id = ?;", array(backup::VAR_PARENTID));
+        $randomtag->add_child($randomtagtags);
+        $randomtagtags->add_child($randomtagtag);
 
-        $outtag->set_source_sql("SELECT t.id, t.name, t.rawname FROM {tag} t
-         JOIN {qtype_randomtag_options} r ON FIND_IN_SET(t.id, r.outtags) WHERE r.id = ?;", array(backup::VAR_PARENTID));
+        $randomtagtag->set_source_sql("SELECT rt.id id, t.id tagid, rt.included included, t.rawname rawname
+          from {qtype_randomtag_tags} rt JOIN {tag} t on rt.tagid = t.id where rt.randomtagid = ?", array(backup::VAR_PARENTID));
 
         $pluginwrapper->add_child($randomtag);
 

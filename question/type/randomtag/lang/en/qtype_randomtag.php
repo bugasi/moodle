@@ -17,8 +17,7 @@
 /**
  * Strings for component 'qtype_randomtag', language 'en'
  *
- * @package    qtype
- * @subpackage randomtag
+ * @package    qtype_randomtag
  * @copyright   2017 Andreas Figge (BuGaSi GmbH)
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

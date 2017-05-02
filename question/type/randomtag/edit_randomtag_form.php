@@ -17,8 +17,7 @@
 /**
  * Defines the editing form for the randomtag question type.
  *
- * @package     qtype
- * @subpackage  randomtag
+ * @package     qtype_randomtag
  * @copyright   2017 Andreas Figge (BuGaSi GmbH)
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -34,22 +33,7 @@ defined('MOODLE_INTERNAL') || die();
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class qtype_randomtag_edit_form extends question_edit_form {
-    protected $currentcat;
-
-    protected function get_category_string($contexts, $catid) {
-        $clist = [];
-        foreach ($contexts as $context) {
-            $clist[] = $context->id;
-        }
-        $clist = join($clist, ', ');
-        $categories = get_categories_for_contexts($clist);
-        if (array_key_exists($catid, $categories)) {
-            $cat = $categories[$catid];
-            return  $cat->id . ',' . $cat->contextid;
-        }
-        return null;
-    }
-
+    
     public function __construct($submiturl, $question, $category, $contexts, $formeditable) {
         global $DB;
 
@@ -112,12 +96,26 @@ class qtype_randomtag_edit_form extends question_edit_form {
         $mform->closeHeaderBefore('buttonar');
     }
 
+    /**
+     * Add any question-type specific form fields.
+     *
+     * @param object $mform the form being built.
+     */
     protected function definition_inner($mform) {
         global $DB;
         $question = $this->question;
         $opts = $DB->get_record('qtype_randomtag_options', array("questionid" => $question->id));
-        $defaultintags = explode(',', $opts->intags ? $opts->intags : '');
-        $defaultouttags = explode(',', $opts->outtags ? $opts->outtags : '');
+        $qtags = $DB->get_records('qtype_randomtag_tags', array("randomtagid" => $opts->id));
+        $defaultintags = array_map(function($it) {
+                return $it->tagid;
+        }, array_filter($qtags, function($v, $k) {
+                return $v->included;
+        }, ARRAY_FILTER_USE_BOTH));
+        $defaultouttags = array_map(function($it) {
+                return $it->tagid;
+        }, array_filter($qtags, function($v, $k) {
+                return !$v->included;
+        }, ARRAY_FILTER_USE_BOTH));
         $intags = optional_param_array('intags', ($defaultintags ? $defaultintags : []), PARAM_INT);
         $outtags = optional_param_array('outtags', ($defaultouttags ? $defaultouttags : []), PARAM_INT);
         $tags = $this->get_tags_used();
@@ -135,6 +133,14 @@ class qtype_randomtag_edit_form extends question_edit_form {
         $mform->getElement('outtags')->setSelected($outtags);
     }
 
+    /**
+     * Returns a list of used question tags in the selected category and subcategories (if "includesubcategories" is checked)
+     *
+     * This method checks if tag instances for questions in the selected category (and if necessary subcategories) exist
+     * and returns a list of said tags.
+     *
+     * @return array an associative array of tag id's and names
+     */
     private function get_tags_used() {
         global $DB;
         $categories = $this->get_categories();
@@ -149,10 +155,13 @@ class qtype_randomtag_edit_form extends question_edit_form {
         return $DB->get_records_sql_menu($sql, $params);
     }
 
+    /**
+     * Return the id of the selected category and the ids of the subcategories (if "includesubcategories" is checked)
+     *
+     * @return array list of category id and subcategory ids
+     */
     private function get_categories() {
-
         $categoryparam = $this->category->id;
-
         if ($categoryparam) {
             list($cat) = explode(',', $categoryparam);
             $includesubcategories = optional_param('includesubcategories', $this->question->questiontext, PARAM_BOOL);
@@ -163,27 +172,48 @@ class qtype_randomtag_edit_form extends question_edit_form {
             }
             return $cats;
         }
-
     }
 
+    /**
+     * Load in existing data as form defaults. Usually new entry defaults are stored directly in
+     * form definition (new entry form); this function is used to load in data where values
+     * already exist and data is being edited (edit entry form).
+     *
+     * note: $slashed param removed
+     *
+     * @param stdClass $question object of default values
+     */
     public function set_data($question) {
         $question->questiontext = array('text' => $question->questiontext);
         // We don't want the complex stuff in the base class to run.
         moodleform::set_data($question);
     }
 
-    public function validation($fromform, $files) {
+    /**
+     * Returns an empty array because validation is not relevant for this question type.
+     *
+     * @param array $data array of ("fieldname"=>value) of submitted data
+     * @param array $files array of uploaded files "element_name"=>tmp_file_path
+     * @return array empty array.
+     */
+    public function validation($data, $files) {
         // Validation of category is not relevant for this question type.
 
         return array();
     }
 
+    /**
+     * Returns the submitted and modified data to save the randomtag question correctly
+     *
+     * @return object submitted data; NULL if not valid or not submitted or cancelled
+     */
     public function get_data() {
         if (!$this->is_cancelled() and $this->is_submitted() and $this->is_validated()) {
             $data = parent::get_data();
             $def = $this->category->id . ',' . $this->category->contextid;
             $cat = optional_param('cat', $def, PARAM_SEQUENCE);
-
+            $data->intags = optional_param_array('intags', [], PARAM_INT);
+            $data->outtags = optional_param_array('outtags', [], PARAM_INT);
             if (object_property_exists($data, 'includesubcategories')) {
                 $data->questiontext['text'] = 1;
             } else {
@@ -197,7 +227,12 @@ class qtype_randomtag_edit_form extends question_edit_form {
         }
     }
 
-
+    /**
+     * Returns the qtype
+     *
+     * @return string The question type name, should be the same as the name() method
+     *      in the question type class.
+     */
     public function qtype() {
         return 'randomtag';
     }

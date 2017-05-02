@@ -1137,30 +1137,6 @@ class edit_renderer extends \plugin_renderer_base {
     }
 
     /**
-     * Return randomtag question form.
-     * @param \moodle_url $thispageurl the canonical URL of this page.
-     * @param \question_edit_contexts $contexts the relevant question bank contexts.
-     * @param array $pagevars the variables from {@link \question_edit_setup()}.
-     * @return string HTML to output.
-     */
-    protected function random_question_by_tags_form(\moodle_url $thispageurl, \question_edit_contexts $contexts, array $pagevars) {
-        if (!$contexts->have_cap('moodle/question:useall')) {
-            return '';
-        }
-        $randombytagsform = new \quiz_add_random_by_tags_form(new \moodle_url('/mod/quiz/addrandombytags.php'),
-            array('contexts' => $contexts, 'cat' => $pagevars['cat']));
-
-        $randombytagsform->set_data(array(
-            'category' => $pagevars['cat'],
-            'returnurl' => $thispageurl->out_as_local_url(true),
-            'randomnumber' => 1,
-            'cmid' => $thispageurl->param('cmid'),
-        ));
-
-        return html_writer::div($randombytagsform->render(), 'randomquestionbytagsformforpopup');
-    }
-
-    /**
      * Initialise the JavaScript for the general editing. (JavaScript for popups
      * is handled with the specific code for those.)
      *
@@ -1334,15 +1310,22 @@ class edit_renderer extends \plugin_renderer_base {
     /**
      * Return the contents of the question randomtag, to be displayed in the question-randomtag pop-up.
      *
-     * @param \mod_quiz\question\bank\custom_view $questionbank the question bank view object.
-     * @param array $pagevars the variables from {@link \question_edit_setup()}.
-     * @return string HTML to output / send back in response to an AJAX request.
+     * @param \question_edit_contexts $contexts The relevant question bank contexts.
+     * @param array $pagevars The variables from {@link \question_edit_setup()}.
+     * @param int $cmid Current course_module id.
+     * @param bool $includesubcategories Indicates if tags from subcategories should be included.
+     * @param int $numbertoadd The selected number of randomtag question entries to be added to the quiz.
+     * @param int $includetype The selected includetype.
+     * @param array $intags List of included tags.
+     * @param array $outtags List of excluded tags.
+     * @return string HTML to output / send back in response to an AJAX request.*
      */
-    public function random_by_tags_contents(\question_category_object $qcobject, $contexts, $pagevars, $cmid, $returnurl) {
+    public function random_by_tags_contents(\question_edit_contexts $contexts, $pagevars, $cmid, $returnurl,
+                                            $includesubcategories, $numbertoadd, $includetype, $intags, $outtags) {
         $mform = new \quiz_add_random_by_tags_form(new \moodle_url('/mod/quiz/addrandombytags.php'),
-            array('contexts' => $contexts, 'cat' => $pagevars['cat'], 'includesubcategories' => $pagevars['includesubcategories'],
-                'numbertoadd' => $pagevars['numbertoadd'], 'includetype' => $pagevars['includetype'],
-                'intags' => $pagevars['intags'], 'outtags' => $pagevars['outtags']));
+            array('contexts' => $contexts, 'cat' => $pagevars['cat'], 'includesubcategories' => $includesubcategories,
+                'numbertoadd' => $numbertoadd, 'includetype' => $includetype,
+                'intags' => $intags, 'outtags' => $outtags));
         $mform->set_data(array(
             'cmid' => $cmid,
             'returnurl' => $returnurl

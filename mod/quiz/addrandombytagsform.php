@@ -34,6 +34,9 @@ require_once($CFG->libdir.'/formslib.php');
  */
 class quiz_add_random_by_tags_form extends moodleform {
 
+    /**
+     * Form definition.
+     */
     protected function definition() {
         global $CFG, $DB;
         $tags = $this->get_tags_used();
@@ -87,11 +90,19 @@ class quiz_add_random_by_tags_form extends moodleform {
     }
 
 
+    /**
+     * Returns a list of used question tags in the selected category and subcategories (if "includesubcategories" is checked)
+     *
+     * This method checks if tag instances for questions in the selected category (and if necessary subcategories) exist
+     * and returns a list of said tags.
+     *
+     * @return array an associative array of tag id's and names
+     */
     private function get_tags_used() {
         global $DB;
         $categories = $this->get_categories();
         list($catidtest, $params) = $DB->get_in_or_equal($categories, SQL_PARAMS_NAMED, 'cat');
-        $sql = "SELECT id as value, name as display FROM {tag} WHERE id IN
+        $sql = "SELECT id value, name display FROM {tag} WHERE id IN
                 (
                  SELECT DISTINCT tagi.tagid FROM {tag_instance} tagi, {question}
                          WHERE itemtype='question' AND {question}.id=tagi.itemid AND category $catidtest
@@ -100,20 +111,11 @@ class quiz_add_random_by_tags_form extends moodleform {
         return $DB->get_records_sql_menu($sql, $params);
     }
 
-    protected function get_current_category($categoryandcontext) {
-        global $DB;
-        list($categoryid, $contextid) = explode(',', $categoryandcontext);
-        if (!$categoryid) {
-            return false;
-        }
-
-        if (!$category = $DB->get_record('question_categories',
-            array('id' => $categoryid, 'contextid' => $contextid))) {
-            return false;
-        }
-        return $category;
-    }
-
+    /**
+     * Return the id of the selected category and the ids of the subcategories (if "includesubcategories" is checked)
+     *
+     * @return array list of category id and subcategory ids
+     */
     private function get_categories() {
         $cmid = optional_param('cmid', 0, PARAM_INT);
         $categoryparam = optional_param('category', '', PARAM_TEXT);
@@ -153,6 +155,12 @@ class quiz_add_random_by_tags_form extends moodleform {
         return array_keys($cats);
     }
 
+
+    /**
+     * Returns a list of integers to be used as options in the "numbertoadd" select
+     *
+     * @return array list of integers
+     */
     private function get_number_of_questions_to_add_choices() {
         $maxrand = 100;
         $randomcount = array();

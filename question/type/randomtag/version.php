@@ -16,8 +16,7 @@
 
 /**
  *
- * @package     qtype
- * @subpackage  random
+ * @package     qtype_randomtag
  * @copyright   2017 Andreas Figge (BuGaSi GmbH)
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -25,7 +24,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'qtype_randomtag';
-$plugin->version   = 2017042600;
+$plugin->version   = 2017042800;
 
 $plugin->requires  = 2016112900;
 

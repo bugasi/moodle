@@ -17,8 +17,7 @@
 /**
  * Question type class for the randomtag question type.
  *
- * @package     qtype
- * @subpackage  randomtag
+ * @package     qtype_randomtag
  * @copyright   2017 Andreas Figge (BuGaSi GmbH)
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -45,19 +44,36 @@ class qtype_randomtag extends question_type {
     /** @var string comma-separated list of manually graded qytpe names, can be used in SQL. */
     protected $manualqtypes = null;
 
+    /**
+     * The name this question should appear as in the create new question
+     * dropdown.
+     *
+     * @return mixed the desired string, or false to hide this question type in the menu.
+     */
     public function menu_name() {
         // Don't include this question type in the 'add new question' menu.
         return false;
     }
 
+    /**
+     * @return bool true if this question type sometimes requires manual grading.
+     */
     public function is_manual_graded() {
         return true;
     }
 
+    /**
+     * @return bool true if this question type can be used by the random question type.
+     */
     public function is_usable_by_random() {
         return false;
     }
 
+    /**
+     * @param object $question a question of this type.
+     * @param string $otherquestionsinuse comma-separate list of other question ids in this attempt.
+     * @return bool true if a particular instance of this question requires manual grading.
+     */
     public function is_question_manual_graded($question, $otherquestionsinuse) {
         global $DB;
         // We take our best shot at working whether a particular question is manually
@@ -107,33 +123,54 @@ class qtype_randomtag extends question_type {
         $this->manualqtypes = implode(',', $manualqtypes);
     }
 
+    /**
+     * Loads the question type specific options for the question.
+     *
+     * This function loads any question type specific options for the
+     * question from the database into the question object. This information
+     * is placed in the $question->options field. A question type is
+     * free, however, to decide on a internal structure of the options field.
+     * @return bool            Indicates success or failure.
+     * @param object $question The question object for the question. This object
+     *                         should be updated to include the question type
+     *                         specific information (it is passed by reference).
+     */
     public function get_question_options($question) {
         return true;
     }
 
     /**
      * Randomtag questions always get a question name that is Random (included tags).
-     * This function is a centralised place to calculate that, given the category.
+     * This function is a centralised place to calculate that.
      * @param object $question the question.
      * @return string the name this question should have.
      */
-    public function question_name($category, $includesubcategories, $question) {
+    public function question_name($question) {
         GLOBAL $DB;
         $tags = '';
         if (object_property_exists($question, 'intags') && !empty($question->intags)) {
             list($catidtest, $params) = $DB->get_in_or_equal($question->intags, SQL_PARAMS_NAMED, 'p');
-            $sql = "SELECT group_concat(name) as tags from {tag} WHERE id $catidtest";
-            $tags = $DB->get_record_sql($sql, $params)->tags;
+            $sql = "SELECT name from {tag} WHERE id $catidtest";
+            $res = $DB->get_records_sql($sql, $params);
+            $tags = implode(',', array_keys($res));
         } else if (object_property_exists($question, 'qtags') && !empty($question->qtags)) {
             list($catidtest, $params) = $DB->get_in_or_equal($question->qtags, SQL_PARAMS_NAMED, 'p');
-            $sql = "SELECT group_concat(name) as tags from {tag} WHERE id $catidtest";
-            $tags = $DB->get_record_sql($sql, $params)->tags;
+            $sql = "SELECT name from {tag} WHERE id $catidtest";
+            $res = $DB->get_records_sql($sql, $params);
+            $tags = implode(',', array_keys($res));
         }
 
         // TODO might include excluded tags and or category name to question name.
         return get_string('randomtagqname', 'qtype_randomtag', shorten_text($tags ? $tags : '---none---', 100));
     }
 
+    /**
+     * Sets the name of randomly selected question to indicate that it was selected
+     * by the randomtag question type.
+     *
+     * @param stdClass $question
+     * @param string $randomtagname
+     */
     protected function set_selected_question_name($question, $randomtagname) {
         $a = new stdClass();
         $a->randomtagname = $randomtagname;
@@ -141,6 +178,20 @@ class qtype_randomtag extends question_type {
         $question->name = get_string('selectedby', 'qtype_randomtag', $a);
     }
 
+    /**
+     * Overrides the parent function save_question to set a custom question text
+     *
+     *
+     * @param object $question the question object which should be updated.
+     * @param object $form the object containing the information to save, as if
+     *      from the question editing form.
+     * @return object On success, return the new question object. On failure,
+     *       return an object as follows. If the error object has an errors field,
+     *       display that as an error message. Otherwise, the editing form will be
+     *       redisplayed with validation errors, from validation_errors field, which
+     *       is itself an object, shown next to the form fields. (I don't think this
+     *       is accurate any more.)
+     */
     public function save_question($question, $form) {
         $form->name = '';
 
@@ -156,8 +207,16 @@ class qtype_randomtag extends question_type {
         return parent::save_question($question, $form);
     }
 
+    /**
+     * Saves question-type specific options
+     *
+     * @return object $result->error or $result->notice
+     * @param object $question  This holds the information from the editing form,
+     *      it is not a standard question object.
+     */
     public function save_question_options($question) {
         global $DB;
+
         // No options, as such, but we set the parent field to the question's
         // own id. Setting the parent field has the effect of hiding this
         // question in various places.
@@ -165,26 +224,58 @@ class qtype_randomtag extends question_type {
         $updateobject->id = $question->id;
         $updateobject->parent = $question->id;
 
-        // We also force the question name to be 'Random (categoryname)'.
-        $category = $DB->get_record('question_categories',
-            array('id' => $question->category), '*', MUST_EXIST);
-        $updateobject->name = $this->question_name($category, !empty($question->questiontext), $question);
+        $updateobject->name = $this->question_name($question);
 
         $options = $DB->get_record('qtype_randomtag_options', array('questionid' => $question->id));
 
         if ($options) {
-            $options->questionid = $question->id;
             $options->includetype = $question->includetype;
-            $options->intags = implode(',', object_property_exists($question, 'intags') ? $question->intags : []);
-            $options->outtags = implode(',', object_property_exists($question, 'outtags') ? $question->outtags : []);
+            $DB->delete_records('qtype_randomtag_tags', array("randomtagid" => $options->id));
+            $tags = [];
+            $intags = object_property_exists($question, 'intags') ? $question->intags : [];
+            foreach ($intags as $intag) {
+                $t = new stdClass();
+                $t->randomtagid = $options->id;
+                $t->tagid = $intag;
+                $t->included = true;
+                $tags[] = $t;
+            }
+            $outtags = object_property_exists($question, 'outtags') ? $question->outtags : [];
+
+            foreach ($outtags as $outtag) {
+                $t = new stdClass();
+                $t->randomtagid = $options->id;
+                $t->tagid = $outtag;
+                $t->included = false;
+                $tags[] = $t;
+            }
+            if (!empty($tags)) {
+                $DB->insert_records('qtype_randomtag_tags', $tags);
+            }
             $DB->update_record('qtype_randomtag_options', $options);
         } else {
             $options = new stdClass();
             $options->questionid = $question->id;
             $options->includetype = $question->includetype;
-            $options->intags = implode(',', $question->qtags);
-            $options->outtags = implode(',', $question->qouttags);
-            $DB->insert_record('qtype_randomtag_options', $options);
+            $id = $DB->insert_record('qtype_randomtag_options', $options, true);
+            $tags = [];
+            foreach ($question->qtags as $intag) {
+                $t = new stdClass();
+                $t->randomtagid = $id;
+                $t->tagid = $intag;
+                $t->included = true;
+                $tags[] = $t;
+            }
+            foreach ($question->qouttags as $outtag) {
+                $t = new stdClass();
+                $t->randomtagid = $id;
+                $t->tagid = $outtag;
+                $t->included = false;
+                $tags[] = $t;
+            }
+            if (!empty($tags)) {
+                $DB->insert_records('qtype_randomtag_tags', $tags);
+            }
         }
         return $DB->update_record('question', $updateobject);
     }
@@ -193,10 +284,9 @@ class qtype_randomtag extends question_type {
      * Get all the usable questions from a particular question category.
      *
      * @param int $categoryid the id of a question category.
-     * @param bool whether to include questions from subcategories.
-     * @param string $qid id of the randomtag question
-     *      exclude from consideration.
-     * @return array of question records.
+     * @param bool $subcategories whether to include questions from subcategories.
+     * @param int $qid id of the randomtag question
+     * @return array questionid => questionid.
      */
     public function get_available_questions_from_category($categoryid, $subcategories, $qid = 0) {
         global $DB;
@@ -214,29 +304,40 @@ class qtype_randomtag extends question_type {
         if ($qid) {
             $opt = $DB->get_record('qtype_randomtag_options', ['questionid' => $qid]);
             if ($opt) {
-                $intags = $opt->intags;
-                $outtags = $opt->outtags;
+                $qtags = $DB->get_records('qtype_randomtag_tags', array("id" => $opt->id));
 
-                if ($intags) {
-                    if (! empty($extraconditions)) {
+                $intags = array_map(function($it) {
+                    return $it->tagid;
+                }, array_filter($qtags, function($v, $k) {
+                    return $v->included;
+                }, ARRAY_FILTER_USE_BOTH));
+
+                $outtags = array_map(function($it) {
+                    return $it->tagid;
+                }, array_filter($qtags, function($v, $k) {
+                    return !$v->included;
+                }, ARRAY_FILTER_USE_BOTH));
+
+                if (!empty($intags)) {
+                    if (!empty($extraconditions)) {
                         $extraconditions .= " AND ";
                     }
-                    list($where, $params) = $DB->get_in_or_equal(explode(',', $intags), SQL_PARAMS_NAMED, 'tag');
+                    list($where, $params) = $DB->get_in_or_equal($intags, SQL_PARAMS_NAMED, 'tag');
                     if ($opt->includetype == 1) {
                         $extraconditions .= "(SELECT COUNT(*) as tagcount FROM {tag_instance} ti " .
                             "WHERE itemid={question}.id AND tagid $where)>0";
                     } else {
                         $extraconditions .= "(SELECT COUNT(*) as tagcount FROM {tag_instance} ti " .
-                            "WHERE itemid={question}.id AND tagid $where)=". count(explode(',', $intags));
+                            "WHERE itemid={question}.id AND tagid $where)=". count($intags);
                     }
 
                     $extraparams = $extraparams + $params;
                 }
-                if ($outtags) {
-                    if (! empty($extraconditions)) {
+                if (!empty($outtags)) {
+                    if (!empty($extraconditions)) {
                         $extraconditions .= " AND ";
                     }
-                    list($where, $params) = $DB->get_in_or_equal(explode(',', $outtags), SQL_PARAMS_NAMED, 'tagn');
+                    list($where, $params) = $DB->get_in_or_equal($outtags, SQL_PARAMS_NAMED, 'tagn');
                     $extraconditions .= "(SELECT COUNT(*) as tagcount FROM {tag_instance} ti " .
                         "WHERE itemid={question}.id AND tagid $where)=0";
                     $extraparams = $extraparams + $params;
@@ -250,6 +351,12 @@ class qtype_randomtag extends question_type {
         return $questionids;
     }
 
+    /**
+     * Create an appropriate question_definition for the question of this type
+     * using data loaded from the database.
+     * @param object $questiondata the question data loaded from the database.
+     * @return question_definition the corresponding question_definition.
+     */
     public function make_question($questiondata) {
         return $this->choose_other_question($questiondata, array());
     }
@@ -292,12 +399,26 @@ class qtype_randomtag extends question_type {
         return null;
     }
 
-    public function get_randomtag_guess_score($questiondata) {
+    /**
+     * @param object $question
+     * @return number|null either a fraction estimating what the student would
+     * score by guessing, or null, if it is not possible to estimate.
+     */
+    public function get_randomtag_guess_score($question) {
         return null;
     }
 
+    /**
+     * Deletes the question-type specific data when a question is deleted.
+     * @param int $questionid the question being deleted.
+     * @param int $contextid the context this quesiotn belongs to.
+     */
     public function delete_question($questionid, $contextid) {
         global $DB;
+        $options = $DB->get_record('qtype_randomtag_options', array('questionid' => $questionid));
+        if ($options) {
+            $DB->delete_records('qtype_randomtag_tags', array('randomtagid' => $options->id));
+        }
         $DB->delete_records('qtype_randomtag_options', ['questionid' => $questionid]);
         parent::delete_question($questionid, $contextid);
     }
